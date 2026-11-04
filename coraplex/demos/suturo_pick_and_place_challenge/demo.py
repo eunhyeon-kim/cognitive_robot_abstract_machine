@@ -36,7 +36,7 @@ from segmind.detectors.spatial_relation_detector_nodes import ContainmentDetecto
 from segmind.event_segmentation import Segmind
 from semantic_digital_twin.datastructures.definitions import TorsoState
 from semantic_digital_twin.reasoning.world_reasoner import WorldReasoner
-from semantic_digital_twin.robots.pr2 import PR2
+from semantic_digital_twin.robots.hsrb import HSRB
 from semantic_digital_twin.semantic_annotations.mixins import (
     HasRootKinematicStructureEntity,
 )
@@ -198,7 +198,7 @@ class BulletWorldDemonstration(RobotDemonstration):
 
     robot_start: HomogeneousTransformationMatrix = field(
         default_factory=lambda: HomogeneousTransformationMatrix.from_xyz_rpy(
-            1.1, 2.5, 0.57
+            1.1, 2.5, 0.5
         )
     )
 
@@ -262,7 +262,7 @@ class BulletWorldDemonstration(RobotDemonstration):
         """
         world = context.world
         robot = context.require_extension(RobotAccess).robot
-        left_arm = robot.left_arm
+        # left_arm = robot.left_arm
         statechart = Statechart(context=context)
         statechart.add_node(
             Sequence(
@@ -298,7 +298,7 @@ def main(
         candidate is tried in.
     """
     BulletWorldDemonstration(
-        used_robot=PR2,
+        used_robot=HSRB,
         executor_type=executor_type,
         collision_avoidance=collision_avoidance,
         event_segmentation=event_segmentation,
