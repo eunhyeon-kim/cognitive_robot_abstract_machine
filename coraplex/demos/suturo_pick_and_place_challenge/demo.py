@@ -43,6 +43,7 @@ from semantic_digital_twin.semantic_annotations.mixins import (
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Milk,
     Floor,
+    TrashCan,
 )
 from krrood_spatial_math.spatial_types import HomogeneousTransformationMatrix
 from krrood_spatial_math.spatial_types import Pose
@@ -55,6 +56,11 @@ from semantic_digital_twin.collision_checking.collision_rules import (
 )
 from semantic_digital_twin.specifications.connections import (
     Connection6DoFSpecification,
+)
+
+from coraplex.robot_plans.actions.composite.searching import (
+    LookAtAndDetectAction,
+    SearchAction,
 )
 
 # %% what the scene is built from
@@ -262,17 +268,29 @@ class BulletWorldDemonstration(RobotDemonstration):
                         floor.root
                         for floor in world.get_semantic_annotations_by_type(Floor)
                     ]))
-        # left_arm = robot.left_arm
+        arm = robot.all_arms[0]
         statechart = Statechart(context=context)
+        [trash_can] = world.get_semantic_annotations_by_type(TrashCan)
+        trash_can_bb = trash_can.root.collision.as_bounding_box_collection_in_frame(
+            trash_can.root
+        ).bounding_box()
+        trash_can_pose = trash_can.root.global_pose
+
+        [milk] = world.get_semantic_annotations_by_type(Milk)
+        search = SearchAction.looking_around(
+            milk.root.global_pose, Milk, context
+        )
+
         statechart.add_node(
             Sequence(
                 nodes=[
                     ParkArmsAction(arms=robot.all_arms),
-                    MoveTorsoAction(torso_state=TorsoState.HIGH),
+                    MoveTorsoAction(torso_state=TorsoState.LOW),
+                    search,
                     # TransportAction.from_graspable_by_closest_grasps(
                     #     self.milk.annotation_in(world),
-                    #     self.milk.target_location(world),
-                    #     left_arm,
+                    #     Pose.from_xyz_rpy(trash_can_pose.x, trash_can_pose.y, trash_can_bb.max_z + 0.2),
+                    #     arm,
                     #     context,
                     # ),
                 ]
