@@ -42,12 +42,16 @@ from semantic_digital_twin.semantic_annotations.mixins import (
 )
 from semantic_digital_twin.semantic_annotations.semantic_annotations import (
     Milk,
+    Floor,
 )
 from krrood_spatial_math.spatial_types import HomogeneousTransformationMatrix
 from krrood_spatial_math.spatial_types import Pose
 from semantic_digital_twin.world import World
 from semantic_digital_twin.predefined_maps.kitchen_environment import (
     KitchenEnvironment,
+)
+from semantic_digital_twin.collision_checking.collision_rules import (
+    AllowCollisionBetweenGroups,
 )
 
 # %% what the scene is built from
@@ -195,10 +199,9 @@ class BulletWorldDemonstration(RobotDemonstration):
     """
 
     ros_node_name: str = "bullet_world_demo_node"
-
     robot_start: HomogeneousTransformationMatrix = field(
         default_factory=lambda: HomogeneousTransformationMatrix.from_xyz_rpy(
-            1.1, 2.5, 0.5
+            1.1, 2.5, 0.0
         )
     )
 
@@ -211,7 +214,7 @@ class BulletWorldDemonstration(RobotDemonstration):
 
     def robot_specification(self) -> RobotSpecification:
         """
-        :return: The PR2, placed at :attr:`robot_start` through its odom.
+        :return: The Toya, placed at :attr:`robot_start` through its odom.
         """
         return RobotSpecification(
             semantic_annotation_type=self.used_robot, world_T_odom=self.robot_start
@@ -262,6 +265,14 @@ class BulletWorldDemonstration(RobotDemonstration):
         """
         world = context.world
         robot = context.require_extension(RobotAccess).robot
+        with world.modify_world():
+            world.collision_manager.add_ignore_collision_rule(
+                AllowCollisionBetweenGroups(
+                    list(robot.bodies_with_collision),
+                    [
+                        floor.root
+                        for floor in world.get_semantic_annotations_by_type(Floor)
+                    ]))
         # left_arm = robot.left_arm
         statechart = Statechart(context=context)
         statechart.add_node(
