@@ -53,6 +53,9 @@ from semantic_digital_twin.predefined_maps.kitchen_environment import (
 from semantic_digital_twin.collision_checking.collision_rules import (
     AllowCollisionBetweenGroups,
 )
+from semantic_digital_twin.specifications.connections import (
+    Connection6DoFSpecification,
+)
 
 # %% what the scene is built from
 
@@ -107,35 +110,11 @@ class PlaceSettingObject:
     Where the object stands before the plan begins, in :attr:`starts_on`'s frame.
     """
 
-    along_table: float
-    """
-    Where along the table the object is laid, in meters.
-    """
-
-    height: float
-    """
-    How high the object's origin is laid so that it rests on the table surface
-    (z=0.723).
-    """
-
     starts_on: ApartmentBody | None = None
     """
     The apartment body the object starts on.
 
     ``None`` starts it at the world root.
-    """
-
-    across_table: float = 3.3
-    """
-    Where the object is laid across the table, along the axis the robot faces.
-
-    Shared by the setting unless an object needs to sit nearer the robot's side than the
-    rest of it.
-    """
-
-    facing_yaw: float = 1.57
-    """
-    Which way the object faces once it has been laid down.
     """
 
     def spawn(self, world: World) -> None:
@@ -175,18 +154,6 @@ class PlaceSettingObject:
             ).evaluate()
         )
 
-    def target_location(self, world: World) -> Pose:
-        """
-        :param world: The world the table stands in.
-        :return: Where on the table the object is laid.
-        """
-        return Pose.from_xyz_rpy(
-            self.along_table,
-            self.across_table,
-            self.height,
-            yaw=self.facing_yaw,
-            reference_frame=world.root,
-        )
 
 
 # %% the demonstration
@@ -202,6 +169,16 @@ class BulletWorldDemonstration(RobotDemonstration):
     robot_start: HomogeneousTransformationMatrix = field(
         default_factory=lambda: HomogeneousTransformationMatrix.from_xyz_rpy(
             1.1, 2.5, 0.0
+        )
+    )
+
+
+    milk: PlaceSettingObject = field(
+        default_factory=lambda: PlaceSettingObject(
+            Milk,
+            SceneFile.MILK,
+            HomogeneousTransformationMatrix.from_xyz_rpy(3.5, 3.3, 0),
+            starts_on= ApartmentBody.ROOT
         )
     )
 
@@ -223,16 +200,28 @@ class BulletWorldDemonstration(RobotDemonstration):
     def is_scene_populated(self, world: World) -> bool:
         return world.is_kinematic_structure_entity_in_world_by_name(ApartmentBody.ROOT)
 
-    # def populate_scene(self, world: World) -> None:
-    #     """
-    #     Put the place setting where it starts out, and let the world reasoner annotate
-    #     the apartment's furniture, including the drawer the spoon lies in.
-    #     """
-    #     for placed_object in self.place_setting:
-    #         placed_object.spawn(world)
-    #
-    #     with world.modify_world():
-    #         WorldReasoner(world).reason()
+    def populate_scene(self, world: World) -> None:
+        """
+        Put the place setting where it starts out, and let the world reasoner annotate
+        the apartment's furniture, including the drawer the spoon lies in.
+        """
+        with world.modify_world():
+            milk = SemanticAnnotationWithRootSpecification(
+                name="milk",
+                semantic_annotation_type=Milk,
+                root_specification=BodySpecification.mesh(
+                    "milk",
+                    SceneFile.MILK.path,
+                    connection_specification=Connection6DoFSpecification(),
+                ),
+            ).spawn(world)
+        milk_box = milk.root.collision.as_bounding_box_collection_in_frame(
+                milk.root
+        ).bounding_box()
+
+        milk.root.parent_connection.origin = HomogeneousTransformationMatrix.from_xyz_rpy(
+                self.milk.start.x, self.milk.start.y, -milk_box.min_z, reference_frame=milk.root.parent_connection.origin.reference_frame
+            )
 
     def build_context_extensions(self, world: World) -> list[ContextExtension]:
         return [
@@ -308,6 +297,7 @@ def main(
     :param debug: Whether to run in debug mode, publishing every copy of the world a
         candidate is tried in.
     """
+
     BulletWorldDemonstration(
         used_robot=HSRB,
         executor_type=executor_type,
