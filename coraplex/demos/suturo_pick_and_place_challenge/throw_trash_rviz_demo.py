@@ -474,7 +474,7 @@ class FloorToTrashCanDemonstration(RobotDemonstration):
         self._let_robot_touch_the_floor(hsrb)
         self._let_wrist_touch_the_object(arm, milk.root)
 
-        grasp = self._create_grasp_from_above(milk)
+        grasp = self._create_grasp_by_the_sides(milk)
         milk_pose = Pose(reference_frame=milk.root)
         search_pose = self.search_spot.create_transform(world.root).pose
         steps: list[StatechartNode] = [
@@ -495,21 +495,21 @@ class FloorToTrashCanDemonstration(RobotDemonstration):
                 face_and_look_at=self._face_and_look_at(milk_pose),
                 pick_up=a(PickUpAction)(grasp=grasp, arm=arm),
             ),
-            ParkArmsAction(arms=hsrb.all_arms),
-            FaceAtAction(target=approach_pose),
-            CarryAction(navigate=NavigateAction(target_location=approach_pose)),
-            ParkArmsAction(arms=hsrb.all_arms),
-            #MoveTorsoAction(torso_state=TorsoState.HIGH),
-            CarryAction(
-                navigate=NavigateAction(
-                    target_location=self._compute_standing_pose_before(
-                        drop_pose, self.drop_distance
-                    )
-                )
-            ),
-            FaceAtAction(target=drop_pose),
-            DropAction(grasp=grasp, arm=arm, release_pose=drop_pose),
-            ParkArmsAction(arms=hsrb.all_arms),
+            # ParkArmsAction(arms=hsrb.all_arms),
+            # FaceAtAction(target=approach_pose),
+            # CarryAction(navigate=NavigateAction(target_location=approach_pose)),
+            # ParkArmsAction(arms=hsrb.all_arms),
+            # #MoveTorsoAction(torso_state=TorsoState.HIGH),
+            # CarryAction(
+            #     navigate=NavigateAction(
+            #         target_location=self._compute_standing_pose_before(
+            #             drop_pose, self.drop_distance
+            #         )
+            #     )
+            # ),
+            # FaceAtAction(target=drop_pose),
+            # DropAction(grasp=grasp, arm=arm, release_pose=drop_pose),
+            # ParkArmsAction(arms=hsrb.all_arms),
         ]
         if issubclass(self.executor_type, KinematicallySimulatedPlanExecutor):
             steps.append(
@@ -617,6 +617,14 @@ class FloorToTrashCanDemonstration(RobotDemonstration):
             milk,
             Pose.from_xyz_rpy(
                 z=self.grasp_height, pitch=np.pi / 2, reference_frame=milk.root
+            ),
+        )
+
+    def _create_grasp_by_the_sides(self, milk: Milk) -> GraspCandidate:
+        return GraspCandidate(
+            milk,
+            Pose.from_xyz_rpy(
+                pitch=np.pi / 6, reference_frame=milk.root
             ),
         )
 
